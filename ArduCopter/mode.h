@@ -1138,3 +1138,29 @@ protected:
 private:
 
 };
+
+
+class ModeMcFlight : public Mode {
+
+public:
+
+    ModeMcFlight(Copter &copter) :
+        Copter::Mode(copter)
+        { }
+
+    virtual bool init(bool ignore_checks) override;
+    virtual void run() override;
+
+    virtual bool requires_GPS() const override { return false; }
+    virtual bool has_manual_throttle() const override { return true; }
+    virtual bool allows_arming(bool from_gcs) const override { return true; };
+    virtual bool is_autopilot() const override { return false; }
+
+protected:
+
+    const char *name() const override { return "MCFLIGHT"; }
+    const char *name4() const override { return "MCFL"; }
+
+private:
+
+};
