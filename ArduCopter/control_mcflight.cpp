@@ -1,83 +1,70 @@
 /*
- * TODO Task McFlight
-git submodule update --init --recursive && ./waf configure --board bebop --static && ./waf copter
+ * Task: McFlight - Autonomous flight
+ * Author: Alan Fernando Rincón Vieyra
+ * Version: 0.1 - TODO (Takeoff and land)
+ * Date: Feb-2018
+ * Compiling: git submodule update --init --recursive && ./waf configure --board bebop --static && ./waf copter
+ * Simulation: ./ArduCopter/sim_vehicle.py -j4 --console
+ * View GCS_Mavlink.cpp & Copter.h
  */
 #include "Copter.h"
-#include <GCS_MAVLink/GCS.h>
+#include "McFlight.h"
+#include <ctime>
 
-#define system_id 252
-#define component_id 1
-#define confirmation_id 101
+using namespace std;
 
-enum{
-  mcflight_start,
-  mcflight_mode_guided,
-  mcflight_takeoff,
-  mcflight_run,
-};
-int mcflight_step = 0;
+int state = MCFLIGHT_MODE_TOILER;
+time_t start;
 
 void Copter::mcflight_run() {
-  mavlink_command_long_t packet;
-  mavlink_message_t msg;
+  // State machine.
+  switch (state) {
+    case MCFLIGHT_ARM:
+      if (copter.position_ok() && !copter.motors->armed()) {
+          // if disarmed, arm motors
+          copter.init_arm_motors(true);
+          gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Arming...");
 
-  memset(&packet, 0, sizeof(packet));
-  packet.target_system = system_id;
-  packet.target_component = component_id;
-  packet.confirmation = confirmation_id;
-  //**
-  switch (mcflight_step) {
-    case mcflight_start:
-      if (copter.position_ok() && !copter.motors->armed()){
-        gcs_chan[MAVLINK_COMM_0].send_text(MAV_SEVERITY_INFO, "McFlight enabled");
-
-        packet.command = MAV_CMD_COMPONENT_ARM_DISARM;
-        packet.param1 = 1.0f;
-
-        mavlink_msg_command_long_encode(system_id, component_id, &msg, &packet);
-        gcs_chan[MAVLINK_COMM_0].handleMessage(&msg);
-
-        mcflight_step = -1;
+          // Continuing with next state.
+          state = MCFLIGHT_TAKEOFF;
       }
+
       break;
-    /*case mcflight_mode_guided:
-        packet.command = MAV_CMD_NAV_LOITER_UNLIM;
-        packet.target_system = 223;
-        packet.target_component = 34;
-        packet.confirmation = 101;
+    case MCFLIGHT_MODE_TOILER:
 
-        memcpy(_MAV_PAYLOAD_NON_CONST(&msg), &packet, MAVLINK_MSG_ID_COMMAND_LONG_LEN);
+      if (copter.set_mode(GUIDED, MODE_REASON_GCS_COMMAND)) {
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode LOITER.");
 
-        msg.msgid = MAVLINK_MSG_ID_COMMAND_LONG;
+        // Continuing with next state.
+        state = MCFLIGHT_ARM;
+      }
 
-        MAVAction(channel, &msg);
-
-        mcflight_step = mcflight_run;
-        break;
-    case mcflight_takeoff:
-      packet.param1 = 0.0;
-      packet.param3 = 0.0;
-      packet.param2 = 0.0;
-      packet.param4 = 0.0;
-      packet.param5 = 0.0;
-      packet.param6 = 0.0;
-      packet.param7 = 5.0;
-      packet.command = MAV_CMD_NAV_TAKEOFF;
-      packet.target_system = 223;
-      packet.target_component = 34;
-      packet.confirmation = 101;
-
-      memcpy(_MAV_PAYLOAD_NON_CONST(&msg), &packet, MAVLINK_MSG_ID_COMMAND_LONG_LEN);
-
-      msg.msgid = MAVLINK_MSG_ID_COMMAND_LONG;
-
-      MAVAction(channel, &msg);
       break;
-    case 11:
-      msg.sysid = copter.g.sysid_my_gcs;
+    case MCFLIGHT_TAKEOFF:
+      if (copter.motors->armed()) {
+        copter.do_user_takeoff(2*100, true);
+        start = time(0);
 
-      msg.msgid = MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE;
-      break;*/
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff. \nWaiting 10 seconds...");
+
+        // Continuing with next state.
+        state = MCFLIGHT_LAND;
+      }
+
+      break;
+    case MCFLIGHT_LAND:
+      if (difftime( time(0), start) == 10.0) {
+        if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)){
+          gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Landing...");
+
+          // Continuing with next state.
+          state = MCFLIGHT_NOP;
+        }
+      }
+
+      break;
   }
-  //**/
+
+  // (Delete) Show message indicating all ok.
+  //gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Runing...");
 }

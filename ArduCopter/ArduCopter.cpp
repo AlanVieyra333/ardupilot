@@ -157,7 +157,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #endif
     SCHED_TASK(button_update,          5,    100),
     SCHED_TASK(stats_update,           1,    100),
-    SCHED_TASK(mcflight_run,           100,    100),
+    SCHED_TASK(mcflight_run,           1,    100),
 };
 
 
