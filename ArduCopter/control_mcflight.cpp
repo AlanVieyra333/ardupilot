@@ -13,7 +13,7 @@
 
 using namespace std;
 
-int state = MCFLIGHT_MODE_TOILER;
+int state = MCFLIGHT_MODE_GUIDED;
 time_t start;
 
 void Copter::mcflight_run() {
@@ -30,9 +30,26 @@ void Copter::mcflight_run() {
       }
 
       break;
-    case MCFLIGHT_MODE_TOILER:
+    case MCFLIGHT_MODE_STABILIZE:
+      if (copter.set_mode(STABILIZE, MODE_REASON_GCS_COMMAND)) {
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode STABILIZE.");
 
+        // Continuing with next state.
+        state = MCFLIGHT_ARM;
+      }
+      break;
+    case MCFLIGHT_MODE_GUIDED:
       if (copter.set_mode(GUIDED, MODE_REASON_GCS_COMMAND)) {
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode GUIDED.");
+
+        // Continuing with next state.
+        state = MCFLIGHT_ARM;
+      }
+
+      break;
+    case MCFLIGHT_MODE_LOITER:
+      //if (difftime( time(0), start) == 6.0)
+      if (copter.set_mode(LOITER, MODE_REASON_GCS_COMMAND)) {
         gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode LOITER.");
 
         // Continuing with next state.
@@ -40,20 +57,31 @@ void Copter::mcflight_run() {
       }
 
       break;
+    case MCFLIGHT_MODE_POSHOLD:
+      if (difftime( time(0), start) == 7.0)
+        if (copter.set_mode(POSHOLD, MODE_REASON_GCS_COMMAND)) {
+          gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode POSHOLD.");
+
+          // Continuing with next state.
+          state = MCFLIGHT_LAND;
+        }
+
+      break;
     case MCFLIGHT_TAKEOFF:
       if (copter.motors->armed()) {
-        copter.do_user_takeoff(2*100, true);
-        start = time(0);
+        if(copter.do_user_takeoff(1*100, true)) {
+          start = time(0);
 
-        gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff. \nWaiting 10 seconds...");
+          gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff. \nWaiting 15 seconds...");
 
-        // Continuing with next state.
-        state = MCFLIGHT_LAND;
+          // Continuing with next state.
+          state = MCFLIGHT_MODE_POSHOLD;
+        }
       }
 
       break;
     case MCFLIGHT_LAND:
-      if (difftime( time(0), start) == 10.0) {
+      if (difftime( time(0), start) == 17.0) {
         if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)){
           gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Landing...");
 
