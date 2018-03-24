@@ -14,7 +14,7 @@
 
 using namespace std;
 
-int state = MF_MODE_POSHOLD;   // State initial. (q0)
+int state = MF_MODE_GUIDED;   // State initial. (q0)
 double wait = 0.0;            // Time to sleep in seconds.
 time_t timer;
 
@@ -74,7 +74,7 @@ void Copter::mcflight_run() {
       break;
     case MF_TAKEOFF:
       if (copter.motors->armed()) {
-        if(copter.do_user_takeoff(1*100, true)) {
+        if(copter.do_user_takeoff(0.5*100, true)) {
           gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff.");
 
           // Continuing with next state.
