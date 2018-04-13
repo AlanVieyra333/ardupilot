@@ -131,9 +131,11 @@
 #include <SITL/SITL.h>
 #endif
 
+#include "McFlight.h"
 
 class Copter : public AP_HAL::HAL::Callbacks {
 public:
+    friend class McFlight;
     friend class GCS_MAVLINK_Copter;
     friend class AP_Rally_Copter;
     friend class Parameters;
@@ -151,6 +153,10 @@ public:
     void loop() override;
 
 private:
+    McFlight mcflight;
+    void mcflight_run();
+    void mcflight_fly();
+
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::MultiCopter aparm;
 
