@@ -1,11 +1,6 @@
 #ifndef MCFLIGHT_H_
 #define MCFLIGHT_H_
 
-#define ROLL_PWM_DEFAULT 1501
-#define PITCH_PWM_DEFAULT 1501
-#define THROTTLE_PWM_DEFAULT 1501
-#define YAW_PWM_DEFAULT 1501
-
 #include <ctime>
 #include <stdint.h>
 
@@ -45,7 +40,7 @@ private:
 
 public:
   void run();
-  void fly();
+  void update_rc();
 };
 
 #endif

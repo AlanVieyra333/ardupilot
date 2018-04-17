@@ -155,7 +155,7 @@ public:
 private:
     McFlight mcflight;
     void mcflight_run();
-    void mcflight_fly();
+    void mcflight_update_rc();
 
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::MultiCopter aparm;

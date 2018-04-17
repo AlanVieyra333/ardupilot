@@ -27,7 +27,7 @@ void McFlight::run() {
   //copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Velocidad: %f %f %f %f", vel.x, vel.y, vel.x, copter.ahrs.groundspeed());
   
   //copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Orientcion: %f", ??);
-  //copter.gcs_chan[0].send_message(MSG_BATTERY_STATUS);  // usar MSG_EXTENDED_STATUS1
+  copter.gcs_chan[0].send_message(MSG_EXTENDED_STATUS1); // usar MSG_EXTENDED_STATUS1
   //copter.gcs_chan[0].send_message(MSG_ATTITUDE);  // Esto es su giroscopio
   //copter.gcs_chan[0].send_message(MSG_LOCATION);  // GLOBAL_POSITION_INT : Send long, lat, alt, speed x y z
   //copter.gcs_chan[0].send_message(MSG_LOCAL_POSITION);  // LOCAL_POSITION_NED // No usar porque es con respecto al origen
@@ -39,7 +39,8 @@ void McFlight::run() {
     // State machine.
     switch (state) {
       case MF_INIT:
-        state = MF_MODE_POSHOLD;
+        //state = MF_MODE_POSHOLD;
+        state = MF_NOP;
         break;
       case MF_ARM:
         // If disarmed, arm motors.
@@ -102,15 +103,15 @@ void McFlight::run() {
         break;
       case MF_TAKEOFF:
         if (copter.motors->armed()) {
-          go_up(2.0, 3.0);
+          go_up(200.0, 3.0);
 
           copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff.");
 
           // Continuing with next state.
           state = MF_HOLD;
 
-          mf_sleep(4.0);
-          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 4.0);
+          mf_sleep(8.5);
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 3.5);
         }
 
         break;
@@ -140,8 +141,6 @@ void McFlight::run() {
 /**
  * Method to move the drone to down.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
  * @returns void
 */
 void McFlight::hold() {
@@ -154,66 +153,78 @@ void McFlight::hold() {
 /**
  * Method to move the drone to left.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
+ * @param distance Distance in centimeters that the drone must move.
+ * @param time_ Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_left(float distance, float time) {}
+void McFlight::go_left(float distance, float time_) {}
 
 /**
  * Method to move the drone to right.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
+ * @param distance Distance in centimeters that the drone must move.
+ * @param time_ Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_right(float distance, float time) {}
+void McFlight::go_right(float distance, float time_) {}
 
 /**
- * Method to move the drone to up. In mode POSHOLD, the speed is 2.5 m/s.
+ * Method to move the drone to up. In mode POSHOLD, max speed is the value of
+ * g.pilot_velocity_z_max (default 2.5 m/s).
  * above 60% of throttle stick.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
+ * @param distance Distance in centimeters that the drone must move.
+ * @param time_ Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_up(float distance, float time) {
-  uint8_t percent = 50;     // 0 - 100
-  // Throttle stick above 60%.
-  throttle_pwm = (4 * percent);
+void McFlight::go_up(float distance, float time_) {
+  uint16_t pwm_max = copter.channel_throttle->get_radio_max();
+  uint16_t pwm_trim = copter.channel_throttle->get_radio_trim();
+  uint16_t pwm_vel = copter.g.pilot_velocity_z_max;
+  float desired_velocity = distance / time_;
+
+  throttle_pwm = (int)(desired_velocity * (pwm_max - pwm_trim) / (float)pwm_vel);
+
+  if (throttle_pwm < (pwm_max - pwm_trim) * 0.2 ){
+    throttle_pwm = (pwm_max - pwm_trim) * 0.2;
+  } else if (throttle_pwm > (pwm_max - pwm_trim)) {
+    throttle_pwm = pwm_max - pwm_trim;
+  }
+
+  //copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: speed: %d", throttle_pwm);
 }
 
 /**
  * Method to move the drone to down.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
+ * @param distance Distance in centimeters that the drone must move.
+ * @param time_ Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_down(float distance, float time) {}
+void McFlight::go_down(float distance, float time_) {}
 
 /**
  * Method to move the drone to forward.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
+ * @param distance Distance in centimeters that the drone must move.
+ * @param time_ Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_forward(float distance, float time) {}
+void McFlight::go_forward(float distance, float time_) {}
 
 /**
  * Method to move the drone to backward.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
+ * @param distance Distance in centimeters that the drone must move.
+ * @param time_ Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_backward(float distance, float time) {}
+void McFlight::go_backward(float distance, float time_) {}
 
 /**
  * Method to sleep the state machine of McFlight.
  * 
- * @param time_ Time in seconds that will last asleep.
+ * @param time__ Time in seconds that will last asleep.
  * @returns void
 */
 void McFlight::mf_sleep(double time_) {
@@ -221,37 +232,23 @@ void McFlight::mf_sleep(double time_) {
   wait = time_;
 }
 
-void McFlight::fly() {
+void McFlight::update_rc() {
   int16_t v[8];
 
-  /*if (!d_throttle_pwm) {
-    d_throttle_pwm = throttle_pwm_end;
-    roll_pwm_end = 0;
-    pitch_pwm_end = 0;
-    throttle_pwm_end = 0;
-    yaw_pwm_end = 0;
-  } else {
-    if (d_throttle_pwm > 0) {
-      d_throttle_pwm--;
-      throttle_pwm++;
-    } else {
-      d_throttle_pwm++;
-      throttle_pwm--;
-    }
-  } //*/
-
-  v[0] = ROLL_PWM_DEFAULT + roll_pwm;           // Roll.
-  v[1] = PITCH_PWM_DEFAULT + pitch_pwm;          // Pitch.
-  v[2] = THROTTLE_PWM_DEFAULT + throttle_pwm;   // Throttle.
-  v[3] = YAW_PWM_DEFAULT + yaw_pwm;             // Yaw.
+  v[0] = copter.channel_roll->get_radio_trim() + roll_pwm;     // Roll.
+  v[1] = copter.channel_pitch->get_radio_trim() + pitch_pwm;    // Pitch.
+  v[2] = copter.channel_throttle->get_radio_trim() + throttle_pwm; // Throttle.
+  v[3] = copter.channel_yaw->get_radio_trim() + yaw_pwm;      // Yaw.
   v[4] = 0;
   v[5] = 0;
   v[6] = 0;
   v[7] = 0;
 
-  // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
-  copter.failsafe.rc_override_active = hal.rcin->set_overrides(v, 8);
+  if (state != MF_NOP) {
+    // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
+    copter.failsafe.rc_override_active = hal.rcin->set_overrides(v, 8);
 
-  // a RC override message is considered to be a 'heartbeat' from the ground station for failsafe purposes
-  copter.failsafe.last_heartbeat_ms = AP_HAL::millis(); //*/
+    // a RC override message is considered to be a 'heartbeat' from the ground station for failsafe purposes
+    copter.failsafe.last_heartbeat_ms = AP_HAL::millis(); //*/
+  }
 }
