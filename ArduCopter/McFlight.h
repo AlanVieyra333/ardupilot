@@ -28,13 +28,23 @@ private:
   int state = MF_INIT;        // State initial.
   double wait = 0.0;          // Time to sleep in seconds.
   time_t timer;
+  uint16_t hertz_mcflight_fly = 400;
+  uint16_t hertz_joystick = 80;
+  bool joystick_enable = true;
+  uint8_t hertz_count = 0;
 
   uint16_t roll_pwm = 0;
   uint16_t pitch_pwm = 0;
   uint16_t throttle_pwm = 0;
   uint16_t yaw_pwm = 0;
-  
+
+  uint16_t roll_pwm_final = 0;
+  uint16_t pitch_pwm_final = 0;
+  uint16_t throttle_pwm_final = 0;
+  uint16_t yaw_pwm_final = 0;
+
   void mf_sleep(double time_);
+  void takeoff();
   void hold();
   void go_left(float distance, float time);
   void go_right(float distance, float time);

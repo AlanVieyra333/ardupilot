@@ -39,7 +39,7 @@ void McFlight::run() {
     // State machine.
     switch (state) {
       case MF_INIT:
-        state = MF_MODE_POSHOLD;
+        state = MF_MODE_STABILIZE;
         break;
       case MF_ARM:
         // If disarmed, arm motors.
@@ -62,6 +62,10 @@ void McFlight::run() {
 
           // Continuing with next state.
           state = MF_ARM;
+          throttle_pwm_final = 0;
+
+          mf_sleep(1.0);
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 1.0);
         }
 
         break;
@@ -109,8 +113,8 @@ void McFlight::run() {
           // Continuing with next state.
           state = MF_HOLD;
 
-          mf_sleep(4.0);
-          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 4.0);
+          mf_sleep(8.0);
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 8.0);
         }
 
         break;
@@ -138,6 +142,19 @@ void McFlight::run() {
 }
 
 /**
+ * Method to move the drone to up. In mode POSHOLD, the speed is 2.5 m/s.
+ * above 60% of throttle stick.
+ * 
+ * @param distance Distance in meters that the drone must move.
+ * @param time Time in seconds that the drone must take time to move.
+ * @returns void
+*/
+void McFlight::Takeoff() {
+  throttle_pwm_final = THROTTLE_PWM_DEFAULT;
+  hertz_joystick = 80;
+}
+
+/**
  * Method to move the drone to down.
  * 
  * @param distance Distance in meters that the drone must move.
@@ -145,10 +162,10 @@ void McFlight::run() {
  * @returns void
 */
 void McFlight::hold() {
-  roll_pwm = 0;
-  pitch_pwm = 0;
-  throttle_pwm = 0;
-  yaw_pwm = 0;
+  roll_pwm_final = 0;
+  pitch_pwm_final = 0;
+  throttle_pwm_final = 0;
+  yaw_pwm_final = 0;
 }
 
 /**
@@ -180,7 +197,7 @@ void McFlight::go_right(float distance, float time) {}
 void McFlight::go_up(float distance, float time) {
   uint8_t percent = 50;     // 0 - 100
   // Throttle stick above 60%.
-  throttle_pwm = (4 * percent);
+  throttle_pwm_final = (4 * percent);
 }
 
 /**
@@ -222,36 +239,55 @@ void McFlight::mf_sleep(double time_) {
 }
 
 void McFlight::fly() {
-  int16_t v[8];
+  if(++hertz_count == hertz_mcflight_fly / hertz_joystick) {
+    joystick_enable = true;
+  }
 
-  /*if (!d_throttle_pwm) {
-    d_throttle_pwm = throttle_pwm_end;
-    roll_pwm_end = 0;
-    pitch_pwm_end = 0;
-    throttle_pwm_end = 0;
-    yaw_pwm_end = 0;
-  } else {
-    if (d_throttle_pwm > 0) {
-      d_throttle_pwm--;
-      throttle_pwm++;
+  if (joystick_enable) {
+    joystick_enable = false;
+    hertz_count = 0;
+    
+    int16_t v[8];
+
+    /*if (!d_throttle_pwm) {
+      d_throttle_pwm = throttle_pwm_end;
+      roll_pwm_end = 0;
+      pitch_pwm_end = 0;
+      throttle_pwm_end = 0;
+      yaw_pwm_end = 0;
     } else {
-      d_throttle_pwm++;
-      throttle_pwm--;
+      if (d_throttle_pwm > 0) {
+        d_throttle_pwm--;
+        throttle_pwm++;
+      } else {
+        d_throttle_pwm++;
+        throttle_pwm--;
+      }
+    } //*/
+    // Soft change.
+    if (throttle_pwm != throttle_pwm_final){
+      if (throttle_pwm_final > throttle_pwm) {
+        throttle_pwm++;
+      } else {
+        throttle_pwm--;
+      }
     }
-  } //*/
 
-  v[0] = ROLL_PWM_DEFAULT + roll_pwm;           // Roll.
-  v[1] = PITCH_PWM_DEFAULT + pitch_pwm;          // Pitch.
-  v[2] = THROTTLE_PWM_DEFAULT + throttle_pwm;   // Throttle.
-  v[3] = YAW_PWM_DEFAULT + yaw_pwm;             // Yaw.
-  v[4] = 0;
-  v[5] = 0;
-  v[6] = 0;
-  v[7] = 0;
+    v[0] = ROLL_PWM_DEFAULT + roll_pwm;           // Roll.
+    v[1] = PITCH_PWM_DEFAULT + pitch_pwm;          // Pitch.
+    v[2] = THROTTLE_PWM_DEFAULT + throttle_pwm;   // Throttle.
+    v[3] = YAW_PWM_DEFAULT + yaw_pwm;             // Yaw.
+    v[4] = 0;
+    v[5] = 0;
+    v[6] = 0;
+    v[7] = 0;
 
-  // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
-  copter.failsafe.rc_override_active = hal.rcin->set_overrides(v, 8);
+    if (state != MF_NOP) {
+      // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
+      copter.failsafe.rc_override_active = hal.rcin->set_overrides(v, 8);
 
-  // a RC override message is considered to be a 'heartbeat' from the ground station for failsafe purposes
-  copter.failsafe.last_heartbeat_ms = AP_HAL::millis(); //*/
+      // a RC override message is considered to be a 'heartbeat' from the ground station for failsafe purposes
+      copter.failsafe.last_heartbeat_ms = AP_HAL::millis(); //*/
+    }
+  }
 }
