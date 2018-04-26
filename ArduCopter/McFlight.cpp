@@ -1,7 +1,7 @@
 /**
  * Task: McFlight - Autonomous flight
  * Author: Alan Fernando Rincón Vieyra
- * Version: 0.2 - TODO (Takeoff and land in mode POSHOLD)
+ * Version: 1.1 - TODO (Takeoff and land in mode STABILIZE)
  * Date: Feb-2018
  * StateMachine: (MF_MODE_POSHOLD) -> (MF_ARM) -> (MF_TAKEOFF) -> (MF_LAND)
  * Compiling: git submodule update --init --recursive && ./waf configure --board bebop --static && ./waf copter
@@ -39,7 +39,9 @@ void McFlight::run() {
     // State machine.
     switch (state) {
       case MF_INIT:
+        copter.joystick.enable();
         state = MF_MODE_STABILIZE;
+
         break;
       case MF_ARM:
         // If disarmed, arm motors.
@@ -48,7 +50,7 @@ void McFlight::run() {
             copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Armed.");
 
             // Continuing with next state.
-            state = MF_TAKEOFF;
+            state = MF_TAKEOFF_PHASE1;
 
             mf_sleep(2.0);
             copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 2.0);
@@ -62,7 +64,9 @@ void McFlight::run() {
 
           // Continuing with next state.
           state = MF_ARM;
-          throttle_pwm_final = 0;
+          
+          copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_min());
+          copter.joystick.setPWMD(100);
 
           mf_sleep(1.0);
           copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 1.0);
@@ -97,43 +101,55 @@ void McFlight::run() {
           copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode POSHOLD.");
 
           // Continuing with next state.
-          state = MF_ARM;
+          state = MF_HOLD;
+
+          mf_sleep(0.5);
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 0.5);
+        }
+
+        break;
+      case MF_TAKEOFF_PHASE1:
+        if (copter.motors->armed()) {
+          takeoff_phase1();
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff phase1.");
+
+          // Continuing with next state.
+          state = MF_TAKEOFF_PHASE2;
 
           mf_sleep(1.0);
           copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 1.0);
         }
 
         break;
-      case MF_TAKEOFF:
+      case MF_TAKEOFF_PHASE2:
         if (copter.motors->armed()) {
-          go_up(2.0, 3.0);
-
-          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff.");
+          takeoff_phase2();
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Takeoff phase2.");
 
           // Continuing with next state.
-          state = MF_HOLD;
+          state = MF_MODE_POSHOLD;
 
-          mf_sleep(8.0);
-          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 8.0);
+          mf_sleep(5.0);
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 5.0);
         }
 
         break;
       case MF_HOLD:
         hold();
+        copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Hold.");
 
         // Continuing with next state.
         state = MF_LAND;
 
-        mf_sleep(10.0);
-        copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 10.0);
-
+        mf_sleep(7.0);
+        copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 7.0);
         break;
       case MF_LAND:
         if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)) {
           copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Landing...");
 
           // Continuing with next state.
-          state = MF_NOP;
+          state = MF_END;
         }
 
         break;
@@ -142,30 +158,28 @@ void McFlight::run() {
 }
 
 /**
- * Method to move the drone to up. In mode POSHOLD, the speed is 2.5 m/s.
- * above 60% of throttle stick.
+ * Method to takeoff the drone.
  * 
  * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::Takeoff() {
-  throttle_pwm_final = THROTTLE_PWM_DEFAULT;
-  hertz_joystick = 80;
+void McFlight::takeoff_phase1() {
+  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() - 20);  // 380
+  copter.joystick.setPWMD(4);
+}
+
+void McFlight::takeoff_phase2() {
+  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() + 100);  // 380
+  copter.joystick.setPWMD(2);
 }
 
 /**
- * Method to move the drone to down.
+ * Method to don't move the drone to any direction.
  * 
- * @param distance Distance in meters that the drone must move.
- * @param time Time in seconds that the drone must take time to move.
  * @returns void
 */
 void McFlight::hold() {
-  roll_pwm_final = 0;
-  pitch_pwm_final = 0;
-  throttle_pwm_final = 0;
-  yaw_pwm_final = 0;
+  copter.joystick.trim();
 }
 
 /**
@@ -195,9 +209,16 @@ void McFlight::go_right(float distance, float time) {}
  * @returns void
 */
 void McFlight::go_up(float distance, float time) {
-  uint8_t percent = 50;     // 0 - 100
-  // Throttle stick above 60%.
-  throttle_pwm_final = (4 * percent);
+  switch (copter.control_mode) {
+    case LOITER:
+    case POSHOLD:
+      copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_max());
+      copter.joystick.setPWMD(4);
+
+      break;
+    default:
+      break;
+  }
 }
 
 /**
@@ -236,58 +257,4 @@ void McFlight::go_backward(float distance, float time) {}
 void McFlight::mf_sleep(double time_) {
   timer = time(0);
   wait = time_;
-}
-
-void McFlight::fly() {
-  if(++hertz_count == hertz_mcflight_fly / hertz_joystick) {
-    joystick_enable = true;
-  }
-
-  if (joystick_enable) {
-    joystick_enable = false;
-    hertz_count = 0;
-    
-    int16_t v[8];
-
-    /*if (!d_throttle_pwm) {
-      d_throttle_pwm = throttle_pwm_end;
-      roll_pwm_end = 0;
-      pitch_pwm_end = 0;
-      throttle_pwm_end = 0;
-      yaw_pwm_end = 0;
-    } else {
-      if (d_throttle_pwm > 0) {
-        d_throttle_pwm--;
-        throttle_pwm++;
-      } else {
-        d_throttle_pwm++;
-        throttle_pwm--;
-      }
-    } //*/
-    // Soft change.
-    if (throttle_pwm != throttle_pwm_final){
-      if (throttle_pwm_final > throttle_pwm) {
-        throttle_pwm++;
-      } else {
-        throttle_pwm--;
-      }
-    }
-
-    v[0] = ROLL_PWM_DEFAULT + roll_pwm;           // Roll.
-    v[1] = PITCH_PWM_DEFAULT + pitch_pwm;          // Pitch.
-    v[2] = THROTTLE_PWM_DEFAULT + throttle_pwm;   // Throttle.
-    v[3] = YAW_PWM_DEFAULT + yaw_pwm;             // Yaw.
-    v[4] = 0;
-    v[5] = 0;
-    v[6] = 0;
-    v[7] = 0;
-
-    if (state != MF_NOP) {
-      // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
-      copter.failsafe.rc_override_active = hal.rcin->set_overrides(v, 8);
-
-      // a RC override message is considered to be a 'heartbeat' from the ground station for failsafe purposes
-      copter.failsafe.last_heartbeat_ms = AP_HAL::millis(); //*/
-    }
-  }
 }

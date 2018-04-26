@@ -131,11 +131,13 @@
 #include <SITL/SITL.h>
 #endif
 
+#include "Joystick.h"
 #include "McFlight.h"
 
 class Copter : public AP_HAL::HAL::Callbacks {
 public:
     friend class McFlight;
+    friend class Joystick;
     friend class GCS_MAVLINK_Copter;
     friend class AP_Rally_Copter;
     friend class Parameters;
@@ -155,7 +157,8 @@ public:
 private:
     McFlight mcflight;
     void mcflight_run();
-    void mcflight_fly();
+    Joystick joystick;
+    void automatic_joystick_update();
 
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::MultiCopter aparm;
