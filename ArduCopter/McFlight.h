@@ -26,6 +26,7 @@ private:
 
   double wait = 0.0;                // Time to sleep in seconds.
   time_t timer;
+  double desired_alt = 0.0;
 
   void takeoff_phase1();
   void takeoff_phase2();

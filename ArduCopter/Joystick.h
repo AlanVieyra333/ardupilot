@@ -6,6 +6,7 @@
 class Joystick {
 private:
   bool joystick_enable;
+  bool joystick_stop = false;
   
   int16_t pwm_roll;               // Current pwm_roll. [1100, 1900]
   int16_t pwm_pitch;              // Current pwm_pitch. [1100, 1900]
@@ -34,6 +35,7 @@ public:
   void setPWMD(int16_t _pwm_d);
   void enable();
   void trim();
+  void stop();
 };
 
 #endif

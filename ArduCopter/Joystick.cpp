@@ -2,6 +2,14 @@
 #include "Copter.h"
 
 void Joystick::softChange() {
+  if (joystick_stop) {
+    pwm_roll_final = pwm_roll;
+    pwm_pitch_final = pwm_pitch;
+    pwm_throttle_final = pwm_throttle;
+    pwm_yaw_final = pwm_yaw;
+    joystick_stop = false;
+  }
+
   softChangeRoll();
   softChangePitch();
   softChangeThrottle();
@@ -133,4 +141,8 @@ void Joystick::trim() {
   pwm_throttle_final = copter.channel_throttle->get_radio_trim();
   pwm_yaw_final = copter.channel_yaw->get_radio_trim();
   pwm_d = 4;
+}
+
+void Joystick::stop() {
+  joystick_stop = true;
 }

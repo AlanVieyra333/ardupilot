@@ -12,10 +12,14 @@
 #include "Copter.h"
 
 void McFlight::run() {
-  /*// Send value sensors.
-  double alt = (copter.ahrs.get_home().alt + copter.current_loc.alt) * 10UL;
-  alt /= 1000.0; // [m].
-  const Vector3f &vel = copter.inertial_nav.get_velocity();
+  // Send value sensors.
+  //double alt = (copter.ahrs.get_home().alt + copter.current_loc.alt) * 10UL;
+  double current_alt = copter.current_loc.alt * 10; // millimeters above ground
+  current_alt /= 1000.0; // metters.
+
+  //copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Altitud: %f", alt);
+
+  /*const Vector3f &vel = copter.inertial_nav.get_velocity();
   Vector3f local_position;
   copter.ahrs.get_relative_position_NED_home(local_position);*/
 
@@ -97,32 +101,23 @@ void McFlight::run() {
 
           // Continuing with next state.
           state = MF_MODE_POSHOLD;
+          desired_alt = -1.0;
 
           mf_sleep(2.0);
           copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 2.0);
         }
 
         break;
-      case MF_MODE_LOITER:
-        if (copter.set_mode(LOITER, MODE_REASON_GCS_COMMAND)) {
-          if (copter.control_mode == LOITER){
-            copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode LOITER.");
+      case MF_MODE_POSHOLD:
+        if(current_alt >= desired_alt) {
+          copter.joystick.stop();
+
+          if (copter.set_mode(POSHOLD, MODE_REASON_GCS_COMMAND)) {
+            copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode POSHOLD.");
 
             // Continuing with next state.
-            state = MF_ARM;
-
-            mf_sleep(1.0);
-            copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 1.0);
+            state = MF_HOLD;
           }
-        }
-
-        break;
-      case MF_MODE_POSHOLD:
-        if (copter.set_mode(POSHOLD, MODE_REASON_GCS_COMMAND)) {
-          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode POSHOLD.");
-
-          // Continuing with next state.
-          state = MF_HOLD;
         }
 
         break;
@@ -166,7 +161,7 @@ void McFlight::takeoff_phase1() {
  * @returns void
 */
 void McFlight::takeoff_phase2() {
-  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() + 25);  // 650
+  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() + 25);  // 425
   copter.joystick.setPWMD(1);
 }
 
@@ -205,7 +200,10 @@ void McFlight::go_right(float distance, float time) {}
  * @param time Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_up(float distance, float time) {
+void McFlight::go_up(float distance, float _time) {
+  //uint16_t pwm_vel = copter.g.pilot_velocity_z_max;
+  //float desired_velocity = distance / _time;
+
   switch (copter.control_mode) {
     case LOITER:
     case POSHOLD:
