@@ -71,8 +71,8 @@ void McFlight::run() {
             // Continuing with next state.
             state = MF_TAKEOFF_PHASE1;
 
-            mf_sleep(2.0);
-            copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 2.0);
+            mf_sleep(1.0);
+            copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 1.0);
           }
         }
 
@@ -103,20 +103,6 @@ void McFlight::run() {
         }
 
         break;
-      case MF_MODE_LOITER:
-        if (copter.set_mode(LOITER, MODE_REASON_GCS_COMMAND)) {
-          if (copter.control_mode == LOITER){
-            copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode LOITER.");
-
-            // Continuing with next state.
-            state = MF_ARM;
-
-            mf_sleep(1.0);
-            copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 1.0);
-          }
-        }
-
-        break;
       case MF_MODE_POSHOLD:
         if (copter.set_mode(POSHOLD, MODE_REASON_GCS_COMMAND)) {
           copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Mode POSHOLD.");
@@ -135,6 +121,18 @@ void McFlight::run() {
 
         mf_sleep(5.0);
         copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 5.0);
+        break;
+      case MF_FLY:
+        if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)) {
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Landing...");
+
+          // Continuing with next state.
+          state = MF_LAND;
+
+          mf_sleep(2.0);
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 2.0);
+        }
+
         break;
       case MF_LAND:
         if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)) {
@@ -166,7 +164,7 @@ void McFlight::takeoff_phase1() {
  * @returns void
 */
 void McFlight::takeoff_phase2() {
-  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() + 25);  // 650
+  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_max() - 100);  // 650
   copter.joystick.setPWMD(1);
 }
 
