@@ -116,22 +116,34 @@ void McFlight::run() {
         hold();
         copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Hold.");
 
-        // Continuing with next state.
-        state = MF_LAND;
+	if (copter.joystick.getPWMPitch() == copter.channel_pitch->get_radio_trim()) {
+	  // Continuing with next state.
+          state = MF_FLY;
 
-        mf_sleep(5.0);
-        copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 5.0);
-        break;
-      case MF_FLY:
-        if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)) {
-          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Landing...");
-
-          // Continuing with next state.
+          mf_sleep(5.0);
+         copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 5.0);
+	} else {
+	  // Continuing with next state.
           state = MF_LAND;
 
           mf_sleep(2.0);
-          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 2.0);
-        }
+         copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Waiting %f seconds...", 2.0);
+	}
+        
+        break;
+      case MF_FLY:
+        //if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)) {
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: FLYING...");
+
+	  go_forward(0, 0);
+
+          // Continuing with next state.
+          state = MF_HOLD;
+
+          mf_sleep(2.0);
+          copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight:  Waiting %f seconds...", 1.0);
+	  
+        //}
 
         break;
       case MF_LAND:
@@ -164,7 +176,7 @@ void McFlight::takeoff_phase1() {
  * @returns void
 */
 void McFlight::takeoff_phase2() {
-  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_max() - 100);  // 650
+  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() + 75);  // 561
   copter.joystick.setPWMD(1);
 }
 
@@ -232,7 +244,10 @@ void McFlight::go_down(float distance, float time) {}
  * @param time Time in seconds that the drone must take time to move.
  * @returns void
 */
-void McFlight::go_forward(float distance, float time) {}
+void McFlight::go_forward(float distance, float time) {
+	copter.joystick.setPWMPitch(copter.channel_pitch->get_radio_min());  //  
+	copter.joystick.setPWMD(2);
+}
 
 /**
  * Method to move the drone to backward.

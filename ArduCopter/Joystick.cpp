@@ -134,3 +134,15 @@ void Joystick::trim() {
   pwm_yaw_final = copter.channel_yaw->get_radio_trim();
   pwm_d = 4;
 }
+
+
+int16_t Joystick::getPWMRoll() {
+
+}
+
+int16_t Joystick::getPWMPitch() {
+  return pwm_pitch;
+}
+int16_t Joystick::getPWMThrottle(){}
+int16_t Joystick::getPWMYaw(){}
+int16_t Joystick::getPWMD(){}

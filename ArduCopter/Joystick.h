@@ -32,6 +32,11 @@ public:
   void setPWMThrottle(int16_t _pwm_throttle);
   void setPWMYaw(int16_t _pwm_yaw);
   void setPWMD(int16_t _pwm_d);
+  int16_t getPWMRoll();
+  int16_t getPWMPitch();
+  int16_t getPWMThrottle();
+  int16_t getPWMYaw();
+  int16_t getPWMD();
   void enable();
   void trim();
 };
