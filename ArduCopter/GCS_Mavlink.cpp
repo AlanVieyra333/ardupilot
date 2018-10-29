@@ -2078,6 +2078,21 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 #endif
         break;
 
+    case MAVLINK_MSG_ID_MCFLIGHT_TARGET:
+        mavlink_mcflight_target_t packet;
+        mavlink_msg_mcflight_target_decode(msg, &packet);
+        if((packet.latitude != 0) || (packet.longitude != 0)) {
+            // sanity check location
+            if (!check_latlng(packet.latitude, packet.longitude)) {
+                break;
+            }
+            Location destiny_loc;
+            destiny_loc.lat = packet.latitude;
+            destiny_loc.lng = packet.longitude;
+            copter.mcflight.set_destiny(destiny_loc);
+        }
+        break;
+
     default:
         handle_common_message(msg);
         break;

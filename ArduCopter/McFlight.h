@@ -26,6 +26,7 @@ private:
 
   double wait = 0.0;                // Time to sleep in seconds.
   time_t timer;
+  Location destiny;
 
   void takeoff_phase1();
   void takeoff_phase2();
@@ -40,6 +41,7 @@ private:
 
 public:
   void run();
+  void set_destiny(Location);
 };
 
 #endif

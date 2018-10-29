@@ -8,8 +8,9 @@
  * Simulation: ./ArduCopter/sim_vehicle.py -j4 --console -A "--uartA=uart:/dev/ttyUSB0"
  * Note: View GCS_Mavlink.cpp & Copter.h
  */
-#include "McFlight.h"
+
 #include "Copter.h"
+#include "McFlight.h"
 
 void McFlight::run() {
   /*// Send value sensors.
@@ -19,7 +20,9 @@ void McFlight::run() {
   Vector3f local_position;
   copter.ahrs.get_relative_position_NED_home(local_position);*/
 
-  //*copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Bateria: %f", copter.battery.voltage());
+  copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Bateria: %f", copter.battery.voltage());
+  copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Destiny - latitude: %d", this->destiny.lat);
+  copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Destiny - longitude: %d", this->destiny.lng);
   //*copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: Altitud: %f", alt);
   //copter.gcs_send_text_fmt(MAV_SEVERITY_INFO, "McFlight: GPS: %f %f %f %f", copter.current_loc.lat, copter.current_loc.lng, copter.ahrs.get_home().lat, copter.ahrs.get_home().lng);
   
@@ -33,11 +36,11 @@ void McFlight::run() {
   //copter.gcs_chan[0].send_message(MSG_LOCAL_POSITION);  // LOCAL_POSITION_NED // No usar porque es con respecto al origen
   //MSG_AHRS
 
-  if (wait == 0.0 || difftime(time(0), timer) >= wait) {
+  if (this->wait == 0.0 || difftime(time(0), this->timer) >= this->wait) {
     wait = 0.0; // Restart.
 
     // State machine.
-    switch (state) {
+    switch (this->state) {
       case MF_INIT:
         copter.joystick.enable();
 
@@ -160,6 +163,15 @@ void McFlight::run() {
 }
 
 /**
+ * Method to set the destiny location.
+ * 
+ * @returns void
+*/
+void McFlight::set_destiny(Location loc) {
+  this->destiny = loc;
+}
+
+/**
  * Method to takeoff the drone (phase 1).
  * 
  * @returns void
@@ -264,7 +276,7 @@ void McFlight::go_backward(float distance, float time) {}
  * @param _time Time in seconds that will last asleep.
  * @returns void
 */
-void McFlight::mf_sleep(double _time) {
-  timer = time(0);
-  wait = _time;
+void McFlight::mf_sleep(double wait) {
+  this->timer = time(0);
+  this->wait = wait;
 }

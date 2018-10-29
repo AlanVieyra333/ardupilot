@@ -2,16 +2,20 @@
 #
 # chmod +x bash-commands.sh
 # runtime: ./bash-commands.sh <ip-remote-host>
+# NOTA: Clics del drone.
+# 1 clic - Encender / Ardupilot
+# 2 clic - Apagar
+# 3 clic - Telnet
 
-FILE_SH='arducopter'
+FILE_SH="arducopter"
 FILE_LOG=logs.log
 
-cmd_host=$1
+cmd_host="192.168.42.1"   #$1
 cmd1="rm /data/ftp/internal_000/ardupilot/$FILE_SH"
 cmd2="mv /data/ftp/$FILE_SH  /data/ftp/internal_000/ardupilot/$FILE_SH"
 cmd3="chmod 755 /data/ftp/internal_000/ardupilot/$FILE_SH"
-cmd4='sync'
-cmd5='reboot'
+cmd4="sync"
+cmd5="reboot"
 
 (
   sleep 2
