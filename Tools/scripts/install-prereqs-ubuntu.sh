@@ -128,9 +128,9 @@ grep -Fxq "$exportline2" ~/.profile 2>/dev/null || {
 
 apt-cache search arm-none-eabi
 
-(
- cd $ARDUPILOT_ROOT
- git submodule init
- git submodule update
-)
+#(
+# cd $ARDUPILOT_ROOT
+# git submodule init
+# git submodule update
+#)
 echo "---------- $0 end ----------"
