@@ -190,6 +190,8 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats,             &copter.g2.stats,            update,           1, 100),
 #endif
+    SCHED_TASK(automatic_joystick_update, 100,    100),
+    SCHED_TASK(mcflight_run,           1,    100),
 };
 
 constexpr int8_t Copter::_failsafe_priorities[7];
