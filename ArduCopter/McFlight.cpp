@@ -23,12 +23,12 @@ void Copter::automatic_joystick_update() {
 void McFlight::mf_log(const char *fmt, ...) {
   va_list arg_list;
   va_start(arg_list, fmt);
-  gcs().send_text(MAV_SEVERITY_INFO, fmt, arg_list);
+  gcs().send_textv(MAV_SEVERITY_INFO, fmt, arg_list);
   va_end(arg_list);
 }
 
 void McFlight::run() {
-  // Send value sensors.
+  /*/ Send value sensors.
   double alt = (copter.ahrs.get_home().alt + copter.current_loc.alt) * 10UL;
   alt /= 1000.0; // [m].
   const Vector3f &vel = copter.inertial_nav.get_velocity();
@@ -38,13 +38,20 @@ void McFlight::run() {
   mf_log("McFlight: Bateria: %f", copter.battery.voltage());
   mf_log("McFlight: Destiny - latitude: %d", this->destiny.lat);
   mf_log("McFlight: Destiny - longitude: %d", this->destiny.lng);
-  float distance;
-  float angle = 0.0;
-  copter.g2.proximity.get_horizontal_distance(angle, distance);
 
-  mf_log("McFlight: Distance forward: %d", distance);
-  mf_log("McFlight: Altitud: %f", alt);
+  if (copter.g2.proximity.get_status() == AP_Proximity::Proximity_Good) {
+    mf_log("McFlight: Proximity Good");
+
+    float distance;
+    copter.g2.proximity.get_horizontal_distance(0.0, distance);
+    mf_log("McFlight: Distance-forward: %d", (uint16_t)(distance*100));
+
+  } else {
+    mf_log("McFlight: Proximity BAD");
+  }
+
   mf_log("McFlight: GPS: %f %f  / %f %f", copter.current_loc.lat, copter.current_loc.lng, copter.ahrs.get_home().lat, copter.ahrs.get_home().lng);
+  mf_log("McFlight: Altitud: %f", alt);
   //mf_log("McFlight: GPS: %f %f", local_position.x, local_position.y);
   mf_log("McFlight: Velocidad: %f %f %f %f", vel.x, vel.y, vel.x, copter.ahrs.groundspeed());
   
@@ -53,7 +60,9 @@ void McFlight::run() {
   //copter.gcs_chan[0].send_message(MSG_ATTITUDE);  // Esto es su giroscopio
   //copter.gcs_chan[0].send_message(MSG_LOCATION);  // GLOBAL_POSITION_INT : Send long, lat, alt, speed x y z
   //copter.gcs_chan[0].send_message(MSG_LOCAL_POSITION);  // LOCAL_POSITION_NED // No usar porque es con respecto al origen
-  //MSG_AHRS
+  //MSG_AHRS*/
+
+  gcs().send_message(MSG_MCFLIGHT_DRONE_STATUS);
 
   if (this->wait == 0 || mf_difftime(AP_HAL::millis(), this->timer) >= this->wait) {
     this->wait = 0; // Restart.
@@ -79,7 +88,7 @@ void McFlight::run() {
           // Continuing with next state.
           state = MF_ARM;
 
-          mf_sleep(1.0);
+          mf_sleep(1000);
           mf_log("McFlight: Waiting %f seconds...", 1.0);
         }
 
@@ -93,8 +102,8 @@ void McFlight::run() {
             // Continuing with next state.
             state = MF_TAKEOFF_PHASE1;
 
-            mf_sleep(1.0);
-            mf_log("McFlight: Waiting %f seconds...", 1.0);
+            mf_sleep(2000);
+            mf_log("McFlight: Waiting %f seconds...", 2.0);
           }
         }
 
@@ -107,7 +116,7 @@ void McFlight::run() {
           // Continuing with next state.
           state = MF_TAKEOFF_PHASE2;
 
-          mf_sleep(1.0);
+          mf_sleep(1000);
           mf_log("McFlight: Waiting %f seconds...", 1.0);
         }
 
@@ -120,7 +129,7 @@ void McFlight::run() {
           // Continuing with next state.
           state = MF_MODE_POSHOLD;
 
-          mf_sleep(2.0);
+          mf_sleep(2000);
           mf_log("McFlight: Waiting %f seconds...", 2.0);
         }
 
@@ -138,32 +147,32 @@ void McFlight::run() {
         hold();
         mf_log("McFlight: Hold.");
 
-	if (copter.joystick.getPWMPitch() == copter.channel_pitch->get_radio_trim()) {
-	  // Continuing with next state.
-          state = MF_FLY;
-
-          mf_sleep(5.0);
-         mf_log("McFlight: Waiting %f seconds...", 5.0);
-	} else {
-	  // Continuing with next state.
+        if (copter.joystick.getPWMPitch() == copter.channel_pitch->get_radio_trim()) {
+          // Continuing with next state.
           state = MF_LAND;
 
-          mf_sleep(2.0);
-         mf_log("McFlight: Waiting %f seconds...", 2.0);
-	}
+          mf_sleep(10000);
+          mf_log("McFlight: Waiting %f seconds...", 10.0);
+        } else {
+          // Continuing with next state.
+          state = MF_LAND;
+
+          mf_sleep(2000);
+          mf_log("McFlight: Waiting %f seconds...", 2.0);
+        }
         
         break;
       case MF_FLY:
         //if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)) {
           mf_log("McFlight: FLYING...");
 
-	  go_forward(0, 0);
+	        go_forward(0, 0);
 
           // Continuing with next state.
           state = MF_HOLD;
 
-          mf_sleep(2.0);
-          mf_log("McFlight:  Waiting %f seconds...", 1.0);
+          mf_sleep(2000);
+          mf_log("McFlight:  Waiting %f seconds...", 2.0);
 	  
         //}
 

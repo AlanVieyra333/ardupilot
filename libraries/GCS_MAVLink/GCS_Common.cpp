@@ -22,6 +22,7 @@
 #include <AP_Airspeed/AP_Airspeed.h>
 #include <AP_Gripper/AP_Gripper.h>
 #include <AP_BLHeli/AP_BLHeli.h>
+#include <AP_Math/AP_Math.h>
 
 #include "GCS.h"
 
@@ -1640,6 +1641,34 @@ void GCS_MAVLINK::send_heartbeat() const
         system_status());
 }
 
+void GCS_MAVLINK::send_mcflight_drone_status() const
+{
+    const AP_BattMonitor &battery = AP::battery();
+    AP_AHRS &ahrs = AP::ahrs();
+    Vector3f vel;
+    ahrs.get_velocity_NED(vel);
+
+    int32_t latitude = global_position_current_loc.lat;
+    int32_t longitude = global_position_current_loc.lng;
+    int32_t altitude = global_position_int_relative_alt();
+    float voltage = battery.voltage();
+    float speed = safe_sqrt((vel.x * vel.x) + (vel.y * vel.y) + (vel.z * vel.z));
+    int32_t roll = ahrs.roll;
+    int32_t pitch = ahrs.pitch;
+    int32_t yaw = ahrs.yaw;
+
+    mavlink_msg_mcflight_drone_status_send(
+        chan,
+        latitude,
+        longitude,
+        altitude,
+        voltage,
+        speed,
+        roll,
+        pitch,
+        yaw);
+}
+
 float GCS_MAVLINK::adjust_rate_for_stream_trigger(enum streams stream_num)
 {
     // send at a much lower rate while handling waypoints and
@@ -2851,6 +2880,11 @@ bool GCS_MAVLINK::try_send_message(const enum ap_message id)
     bool ret = true;
 
     switch(id) {
+
+    case MSG_MCFLIGHT_DRONE_STATUS:
+        CHECK_PAYLOAD_SIZE(MCFLIGHT_DRONE_STATUS);
+        send_mcflight_drone_status();
+        break;
 
     case MSG_ATTITUDE:
         CHECK_PAYLOAD_SIZE(ATTITUDE);
