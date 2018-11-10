@@ -151,8 +151,8 @@ void McFlight::run() {
           // Continuing with next state.
           state = MF_LAND;
 
-          mf_sleep(10000);
-          mf_log("McFlight: Waiting %f seconds...", 10.0);
+          mf_sleep(5000);
+          mf_log("McFlight: Waiting %f seconds...", 5.0);
         } else {
           // Continuing with next state.
           state = MF_LAND;
@@ -205,8 +205,8 @@ void McFlight::set_destiny(Location loc) {
  * @returns void
 */
 void McFlight::takeoff_phase1() {
-  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() - 20);  // 380
-  copter.joystick.setPWMD(4);
+  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() - 300);  // 1200
+  copter.joystick.setPWMD(2);
 }
 
 /**
@@ -216,7 +216,7 @@ void McFlight::takeoff_phase1() {
  * @returns void
 */
 void McFlight::takeoff_phase2() {
-  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() + 75);  // 561
+  copter.joystick.setPWMThrottle(copter.channel_throttle->get_radio_trim() - 80);  // 1420
   copter.joystick.setPWMD(1);
 }
 
@@ -226,7 +226,7 @@ void McFlight::takeoff_phase2() {
  * @returns void
 */
 void McFlight::hold() {
-  copter.joystick.trim();
+  //copter.joystick.trim();
 }
 
 /**
